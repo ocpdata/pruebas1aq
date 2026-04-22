@@ -2,7 +2,7 @@
 
 ## Execution order
 
-Trigger the `Deploy Arcadia` workflow manually. It does not request runtime inputs.
+Trigger either the `Deploy Arcadia` or `Destroy Arcadia` workflow manually. Neither requests runtime inputs.
 
 Before running it:
 
@@ -15,6 +15,12 @@ The workflow will then run the three jobs in order:
 1. AWS infrastructure
 2. Arcadia application installation
 3. F5 DCS configuration
+
+The destroy workflow runs these jobs in order:
+
+1. Collect AWS context
+2. F5 DCS destroy
+3. AWS destroy
 
 ## What each job does
 
@@ -42,6 +48,12 @@ The workflow will then run the three jobs in order:
 - Creates an HTTP load balancer for the requested domain.
 - Enables API discovery on the HTTP load balancer.
 - Exposes the resulting load balancer CNAME and IP through Terraform outputs.
+
+### Destroy flow
+
+- Reads `public_ip` and `public_dns` from the `arcadia-aws` Terraform state.
+- Removes the F5 XC origin pool, App Firewall and HTTP load balancer first.
+- Removes the AWS instance, security group, key pair and instance profile last.
 
 ## Post-deploy checks
 

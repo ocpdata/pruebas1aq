@@ -6,12 +6,19 @@ This repository provisions an Arcadia lab in three automated jobs triggered manu
 2. `arcadia_app` installs and starts Arcadia on the EC2 instance through AWS Systems Manager.
 3. `f5_dcs_config` configures the public F5 Distributed Cloud HTTP load balancer and baseline WAAP settings with Terraform.
 
+It also provides a manual destroy workflow that removes the lab in reverse order:
+
+1. `collect_aws_context` reads the AWS Terraform state and captures the origin outputs needed for teardown.
+2. `f5_dcs_destroy` removes the F5 XC configuration first.
+3. `aws_destroy` tears down the EC2 instance and AWS resources.
+
 ## Workflow model
 
 - Trigger: `workflow_dispatch`
 - Manual execution without runtime inputs
 - Execution after trigger: fully automatic through `needs`
 - State backend: Terraform Cloud remote backend in local execution mode
+- Available workflows: `Deploy Arcadia` and `Destroy Arcadia`
 
 ## Required GitHub secrets
 
@@ -34,6 +41,7 @@ This repository provisions an Arcadia lab in three automated jobs triggered manu
 - `ARCADIA_DOMAIN` and `ARCADIA_REPO_REF` are fixed in [.github/workflows/deploy-arcadia.yml](/Users/ocarrillo/Labs/pruebas1aq/.github/workflows/deploy-arcadia.yml).
 - `ARCADIA_REPO_REF` is set to `master` because that is the current default branch of `pupapaik/f5-arcadia`.
 - The AWS account must have a default VPC and at least one subnet with `MapPublicIpOnLaunch=true` in the configured region.
+- The destroy workflow expects the `arcadia-aws` Terraform Cloud workspace to still contain state so it can read the origin IP and DNS before removing F5 XC.
 
 ## Local validation
 
