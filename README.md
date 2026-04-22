@@ -9,6 +9,7 @@ This repository provisions an Arcadia lab in three automated jobs triggered manu
 ## Workflow model
 
 - Trigger: `workflow_dispatch`
+- Manual execution without runtime inputs
 - Execution after trigger: fully automatic through `needs`
 - State backend: Terraform Cloud remote backend in local execution mode
 
@@ -25,14 +26,12 @@ This repository provisions an Arcadia lab in three automated jobs triggered manu
 
 `XC_API_P12_FILE` must contain the P12 bundle content encoded in base64 so the workflow can reconstruct it on the runner.
 
-## Required workflow inputs
+## Workflow configuration
 
-- `aws_region`
-- `aws_vpc_id`
-- `aws_public_subnet_id`
-- `arcadia_domain`
-- `xc_namespace`
-- `arcadia_repo_ref`
+- `AWS_REGION` must exist as a GitHub Actions repository variable.
+- The workflow uses fixed internal values for `AWS_VPC_ID`, `AWS_PUBLIC_SUBNET_ID`, `ARCADIA_DOMAIN`, `XC_NAMESPACE` and `ARCADIA_REPO_REF`.
+- `XC_NAMESPACE` is fixed to `nathan`.
+- Update the VPC and subnet IDs in [.github/workflows/deploy-arcadia.yml](/Users/ocarrillo/Labs/pruebas1aq/.github/workflows/deploy-arcadia.yml) if you want to target a different existing network.
 
 ## Local validation
 

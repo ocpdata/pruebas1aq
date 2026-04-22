@@ -2,14 +2,13 @@
 
 ## Execution order
 
-Trigger the `Deploy Arcadia` workflow manually and provide:
+Trigger the `Deploy Arcadia` workflow manually. It does not request runtime inputs.
 
-- `aws_region`
-- `aws_vpc_id`
-- `aws_public_subnet_id`
-- `arcadia_domain`
-- `xc_namespace`
-- `arcadia_repo_ref`
+Before running it:
+
+- Define the repository variable `AWS_REGION`.
+- Confirm the fixed VPC and subnet IDs declared in [.github/workflows/deploy-arcadia.yml](/Users/ocarrillo/Labs/pruebas1aq/.github/workflows/deploy-arcadia.yml).
+- The F5 XC namespace is fixed to `nathan`.
 
 The workflow will then run the three jobs in order:
 
