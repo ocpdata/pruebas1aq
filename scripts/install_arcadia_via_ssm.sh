@@ -5,7 +5,7 @@ set -euo pipefail
 INSTANCE_ID=""
 REGION=""
 REPO_URL="https://github.com/pupapaik/f5-arcadia.git"
-REPO_REF="main"
+REPO_REF="master"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

@@ -64,5 +64,5 @@ variable "arcadia_repo_url" {
 variable "arcadia_repo_ref" {
   description = "Arcadia source repository git ref"
   type        = string
-  default     = "main"
+  default     = "master"
 }

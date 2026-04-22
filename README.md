@@ -32,6 +32,7 @@ This repository provisions an Arcadia lab in three automated jobs triggered manu
 - The workflow automatically discovers the default VPC and the first public subnet in that VPC for the selected region.
 - `XC_NAMESPACE` is fixed to `nathan`.
 - `ARCADIA_DOMAIN` and `ARCADIA_REPO_REF` are fixed in [.github/workflows/deploy-arcadia.yml](/Users/ocarrillo/Labs/pruebas1aq/.github/workflows/deploy-arcadia.yml).
+- `ARCADIA_REPO_REF` is set to `master` because that is the current default branch of `pupapaik/f5-arcadia`.
 - The AWS account must have a default VPC and at least one subnet with `MapPublicIpOnLaunch=true` in the configured region.
 
 ## Local validation

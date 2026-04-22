@@ -77,7 +77,7 @@ jobs:
           TF_VAR_vpc_id: ${{ steps.network.outputs.vpc_id }}
           TF_VAR_public_subnet_id: ${{ steps.network.outputs.public_subnet_id }}
           TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
-          TF_VAR_arcadia_repo_ref: main
+          TF_VAR_arcadia_repo_ref: master
         run: terraform apply -input=false -auto-approve
 
       - name: Capture Terraform outputs
@@ -106,7 +106,7 @@ jobs:
           scripts/install_arcadia_via_ssm.sh \
             --instance-id "${{ needs.aws_infra.outputs.instance_id }}" \
             --region "${{ vars.AWS_REGION }}" \
-            --repo-ref "main"
+            --repo-ref "master"
 
   f5_dcs_config:
     name: F5 DCS configuration
