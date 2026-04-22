@@ -48,7 +48,25 @@ fi
 
 COMPOSE_B64="$(base64 < "$COMPOSE_FILE" | tr -d '\n')"
 
-aws ssm wait instance-online --region "$REGION" --instance-ids "$INSTANCE_ID"
+for attempt in {1..30}; do
+  ping_status="$(aws ssm describe-instance-information \
+    --region "$REGION" \
+    --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+    --query 'InstanceInformationList[0].PingStatus' \
+    --output text 2>/dev/null || true)"
+
+  if [[ "$ping_status" == "Online" ]]; then
+    break
+  fi
+
+  if [[ "$attempt" -eq 30 ]]; then
+    echo "Instance ${INSTANCE_ID} did not become available in SSM within the expected time." >&2
+    exit 1
+  fi
+
+  echo "Waiting for instance ${INSTANCE_ID} to appear as Online in SSM..."
+  sleep 10
+done
 
 COMMAND_ID="$(aws ssm send-command \
   --region "$REGION" \
