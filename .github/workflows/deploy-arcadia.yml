@@ -29,10 +29,16 @@ jobs:
       - name: Terraform init
         working-directory: terraform/aws
         run: |
+          cat > backend.hcl <<EOF
+          organization = "${{ secrets.TFC_ORG }}"
+          workspaces {
+            name = "arcadia-aws"
+          }
+          EOF
+
           terraform init \
             -input=false \
-            -backend-config="organization=${{ secrets.TFC_ORG }}" \
-            -backend-config="workspaces[name]=arcadia-aws"
+            -backend-config=backend.hcl
 
       - name: Terraform validate
         working-directory: terraform/aws
@@ -99,10 +105,16 @@ jobs:
       - name: Terraform init
         working-directory: terraform/f5xc
         run: |
+          cat > backend.hcl <<EOF
+          organization = "${{ secrets.TFC_ORG }}"
+          workspaces {
+            name = "arcadia-f5xc"
+          }
+          EOF
+
           terraform init \
             -input=false \
-            -backend-config="organization=${{ secrets.TFC_ORG }}" \
-            -backend-config="workspaces[name]=arcadia-f5xc"
+            -backend-config=backend.hcl
 
       - name: Terraform validate
         working-directory: terraform/f5xc
