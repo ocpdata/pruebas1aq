@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: arcadia-backend
+    hostname: backend
+    restart: unless-stopped
+    networks:
+      - arcadia
+
+  app2:
+    build:
+      context: ./app2
+    container_name: arcadia-app2
+    hostname: app2
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - arcadia
+
+  app3:
+    build:
+      context: ./app3
+    container_name: arcadia-app3
+    hostname: app3
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - arcadia
+
+  main:
+    build:
+      context: ./main
+    container_name: arcadia-main
+    hostname: main
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - app2
+      - app3
+    ports:
+      - "80:8080"
+    networks:
+      - arcadia
+
+networks:
+  arcadia:
+    name: arcadia

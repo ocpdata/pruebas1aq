@@ -1,0 +1,150 @@
+name: Deploy Arcadia
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_region:
+        description: AWS region where the EC2 instance will be created
+        required: true
+        type: string
+      aws_vpc_id:
+        description: Existing AWS VPC ID for the Arcadia lab
+        required: true
+        type: string
+      aws_public_subnet_id:
+        description: Existing public subnet ID for the Arcadia lab
+        required: true
+        type: string
+      arcadia_domain:
+        description: Public domain to publish through F5 Distributed Cloud
+        required: true
+        default: arcadia.digitalvs.com
+        type: string
+      xc_namespace:
+        description: F5 XC namespace where edge resources will be created
+        required: true
+        default: default
+        type: string
+      arcadia_repo_ref:
+        description: Git ref to deploy from the Arcadia repository
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  aws_infra:
+    name: AWS infrastructure
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
+      TF_TOKEN_app_terraform_io: ${{ secrets.TFC_TOKEN }}
+    outputs:
+      instance_id: ${{ steps.outputs.outputs.instance_id }}
+      public_ip: ${{ steps.outputs.outputs.public_ip }}
+      public_dns: ${{ steps.outputs.outputs.public_dns }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: terraform/aws
+        run: |
+          terraform init \
+            -input=false \
+            -backend-config="organization=${{ secrets.TFC_ORG }}" \
+            -backend-config="workspaces[name]=arcadia-aws"
+
+      - name: Terraform validate
+        working-directory: terraform/aws
+        run: terraform validate
+
+      - name: Terraform apply
+        working-directory: terraform/aws
+        env:
+          TF_VAR_aws_region: ${{ inputs.aws_region }}
+          TF_VAR_vpc_id: ${{ inputs.aws_vpc_id }}
+          TF_VAR_public_subnet_id: ${{ inputs.aws_public_subnet_id }}
+          TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
+          TF_VAR_arcadia_repo_ref: ${{ inputs.arcadia_repo_ref }}
+        run: terraform apply -input=false -auto-approve
+
+      - name: Capture Terraform outputs
+        id: outputs
+        working-directory: terraform/aws
+        run: |
+          echo "instance_id=$(terraform output -raw instance_id)" >> "$GITHUB_OUTPUT"
+          echo "public_ip=$(terraform output -raw public_ip)" >> "$GITHUB_OUTPUT"
+          echo "public_dns=$(terraform output -raw public_dns)" >> "$GITHUB_OUTPUT"
+
+  arcadia_app:
+    name: Arcadia application
+    runs-on: ubuntu-latest
+    needs: aws_infra
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ inputs.aws_region }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Arcadia through SSM
+        run: |
+          chmod +x scripts/install_arcadia_via_ssm.sh
+          scripts/install_arcadia_via_ssm.sh \
+            --instance-id "${{ needs.aws_infra.outputs.instance_id }}" \
+            --region "${{ inputs.aws_region }}" \
+            --repo-ref "${{ inputs.arcadia_repo_ref }}"
+
+  f5_dcs_config:
+    name: F5 DCS configuration
+    runs-on: ubuntu-latest
+    needs:
+      - aws_infra
+      - arcadia_app
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TFC_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Materialize XC API credentials
+        run: |
+          mkdir -p .tmp
+          printf '%s' '${{ secrets.XC_API_P12_FILE }}' | base64 --decode > .tmp/xc-api-creds.p12
+
+      - name: Terraform init
+        working-directory: terraform/f5xc
+        run: |
+          terraform init \
+            -input=false \
+            -backend-config="organization=${{ secrets.TFC_ORG }}" \
+            -backend-config="workspaces[name]=arcadia-f5xc"
+
+      - name: Terraform validate
+        working-directory: terraform/f5xc
+        run: terraform validate
+
+      - name: Terraform apply
+        working-directory: terraform/f5xc
+        env:
+          TF_VAR_xc_api_url: ${{ secrets.XC_API_URL }}
+          TF_VAR_xc_api_p12_file: ${{ github.workspace }}/.tmp/xc-api-creds.p12
+          TF_VAR_xc_namespace: ${{ inputs.xc_namespace }}
+          TF_VAR_arcadia_domain: ${{ inputs.arcadia_domain }}
+          TF_VAR_origin_public_ip: ${{ needs.aws_infra.outputs.public_ip }}
+          TF_VAR_origin_public_dns: ${{ needs.aws_infra.outputs.public_dns }}
+          TF_VAR_origin_public_port: "80"
+          VES_P12_PASSWORD: ${{ secrets.XC_P12_PASSWORD }}
+        run: terraform apply -input=false -auto-approve

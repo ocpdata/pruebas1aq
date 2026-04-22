@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euxo pipefail
+
+dnf update -y || true
+dnf install -y docker git || true
+
+systemctl enable --now docker
+usermod -aG docker ec2-user || true
+
+mkdir -p /opt/arcadia-bootstrap
+cat >/opt/arcadia-bootstrap/context.txt <<EOF
+repo_url=${arcadia_repo_url}
+repo_ref=${arcadia_repo_ref}
+EOF
