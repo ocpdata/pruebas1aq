@@ -90,25 +90,57 @@ COMMAND_ID="$(aws ssm send-command \
   --query 'Command.CommandId' \
   --output text)"
 
-aws ssm wait command-executed \
-  --region "$REGION" \
-  --command-id "$COMMAND_ID" \
-  --instance-id "$INSTANCE_ID"
+STATUS=""
 
-STATUS="$(aws ssm get-command-invocation \
-  --region "$REGION" \
-  --command-id "$COMMAND_ID" \
-  --instance-id "$INSTANCE_ID" \
-  --query 'Status' \
-  --output text)"
-
-if [[ "$STATUS" != "Success" ]]; then
-  aws ssm get-command-invocation \
+for attempt in {1..90}; do
+  STATUS="$(aws ssm get-command-invocation \
     --region "$REGION" \
     --command-id "$COMMAND_ID" \
     --instance-id "$INSTANCE_ID" \
-    --query 'StandardErrorContent' \
-    --output text >&2
+    --query 'Status' \
+    --output text 2>/dev/null || true)"
+
+  case "$STATUS" in
+    Success|Cancelled|TimedOut|Failed|Cancelling)
+      break
+      ;;
+    Pending|InProgress|Delayed|"" )
+      if [[ "$attempt" -eq 90 ]]; then
+        echo "SSM command ${COMMAND_ID} did not reach a terminal state in time." >&2
+        exit 1
+      fi
+      echo "Waiting for SSM command ${COMMAND_ID} to finish. Current status: ${STATUS:-Unknown}" 
+      sleep 10
+      ;;
+    *)
+      echo "Unexpected SSM command status: $STATUS" >&2
+      exit 1
+      ;;
+  esac
+done
+
+STDOUT_CONTENT="$(aws ssm get-command-invocation \
+  --region "$REGION" \
+  --command-id "$COMMAND_ID" \
+  --instance-id "$INSTANCE_ID" \
+  --query 'StandardOutputContent' \
+  --output text 2>/dev/null || true)"
+
+STDERR_CONTENT="$(aws ssm get-command-invocation \
+  --region "$REGION" \
+  --command-id "$COMMAND_ID" \
+  --instance-id "$INSTANCE_ID" \
+  --query 'StandardErrorContent' \
+  --output text 2>/dev/null || true)"
+
+if [[ -n "$STDOUT_CONTENT" && "$STDOUT_CONTENT" != "None" ]]; then
+  printf '%s\n' "$STDOUT_CONTENT"
+fi
+
+if [[ "$STATUS" != "Success" ]]; then
+  if [[ -n "$STDERR_CONTENT" && "$STDERR_CONTENT" != "None" ]]; then
+    printf '%s\n' "$STDERR_CONTENT" >&2
+  fi
   exit 1
 fi
 
