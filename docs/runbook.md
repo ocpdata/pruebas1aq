@@ -7,7 +7,7 @@ Trigger the `Deploy Arcadia` workflow manually. It does not request runtime inpu
 Before running it:
 
 - Define the repository variable `AWS_REGION`.
-- Confirm the fixed VPC and subnet IDs declared in [.github/workflows/deploy-arcadia.yml](/Users/ocarrillo/Labs/pruebas1aq/.github/workflows/deploy-arcadia.yml).
+- Confirm the target region has a default VPC and at least one public subnet with automatic public IP assignment enabled.
 - The F5 XC namespace is fixed to `nathan`.
 
 The workflow will then run the three jobs in order:

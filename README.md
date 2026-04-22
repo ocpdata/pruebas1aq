@@ -29,9 +29,10 @@ This repository provisions an Arcadia lab in three automated jobs triggered manu
 ## Workflow configuration
 
 - `AWS_REGION` must exist as a GitHub Actions repository variable.
-- The workflow uses fixed internal values for `AWS_VPC_ID`, `AWS_PUBLIC_SUBNET_ID`, `ARCADIA_DOMAIN`, `XC_NAMESPACE` and `ARCADIA_REPO_REF`.
+- The workflow automatically discovers the default VPC and the first public subnet in that VPC for the selected region.
 - `XC_NAMESPACE` is fixed to `nathan`.
-- Update the VPC and subnet IDs in [.github/workflows/deploy-arcadia.yml](/Users/ocarrillo/Labs/pruebas1aq/.github/workflows/deploy-arcadia.yml) if you want to target a different existing network.
+- `ARCADIA_DOMAIN` and `ARCADIA_REPO_REF` are fixed in [.github/workflows/deploy-arcadia.yml](/Users/ocarrillo/Labs/pruebas1aq/.github/workflows/deploy-arcadia.yml).
+- The AWS account must have a default VPC and at least one subnet with `MapPublicIpOnLaunch=true` in the configured region.
 
 ## Local validation
 

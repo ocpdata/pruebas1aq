@@ -26,6 +26,32 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      - name: Discover default AWS network
+        id: network
+        run: |
+          vpc_id="$(aws ec2 describe-vpcs \
+            --filters Name=isDefault,Values=true \
+            --query 'Vpcs[0].VpcId' \
+            --output text)"
+
+          if [[ -z "$vpc_id" || "$vpc_id" == "None" ]]; then
+            echo "No default VPC was found in region ${AWS_DEFAULT_REGION}." >&2
+            exit 1
+          fi
+
+          subnet_id="$(aws ec2 describe-subnets \
+            --filters Name=vpc-id,Values="$vpc_id" \
+            --query 'Subnets[?MapPublicIpOnLaunch==`true`].SubnetId | [0]' \
+            --output text)"
+
+          if [[ -z "$subnet_id" || "$subnet_id" == "None" ]]; then
+            echo "No public subnet with MapPublicIpOnLaunch=true was found in VPC ${vpc_id}." >&2
+            exit 1
+          fi
+
+          echo "vpc_id=$vpc_id" >> "$GITHUB_OUTPUT"
+          echo "public_subnet_id=$subnet_id" >> "$GITHUB_OUTPUT"
+
       - name: Terraform init
         working-directory: terraform/aws
         run: |
@@ -48,8 +74,8 @@ jobs:
         working-directory: terraform/aws
         env:
           TF_VAR_aws_region: ${{ vars.AWS_REGION }}
-          TF_VAR_vpc_id: vpc-0c0123456789abcde
-          TF_VAR_public_subnet_id: subnet-0c0123456789abcde
+          TF_VAR_vpc_id: ${{ steps.network.outputs.vpc_id }}
+          TF_VAR_public_subnet_id: ${{ steps.network.outputs.public_subnet_id }}
           TF_VAR_ssh_public_key: ${{ secrets.SSH_PUBLIC_KEY }}
           TF_VAR_arcadia_repo_ref: main
         run: terraform apply -input=false -auto-approve
